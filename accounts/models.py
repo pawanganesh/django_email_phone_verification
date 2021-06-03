@@ -1,3 +1,5 @@
+import random
+
 from django.db import models
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
@@ -11,6 +13,17 @@ def set_username(sender, instance, **kwargs):
             username += str(counter)
             counter += 1
         instance.username = username
+
+
+def generate_code():
+    number_list = [x for x in range(10)]
+    code_items = []
+
+    for i in range(6):
+        num = random.choice(number_list)
+        code_items.append(num)
+    code_string = "".join(str(item) for item in code_items)
+    return code_string
 
 
 class CustomUserManager(BaseUserManager):
@@ -76,6 +89,33 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class UserDetail(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    is_verified_email = models.BooleanField(default=False)
+    auth_token_email = models.CharField(max_length=6, blank=True)
+
+    phone_number = models.CharField(max_length=14, null=True, blank=True)
+    is_verified_phone = models.BooleanField(default=False)
+    auth_token_phone = models.CharField(max_length=6, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.username
+
+    def save(self, *args, **kwargs):
+        if self.user.email:
+            self.auth_token_email = generate_code()
+        if self.phone_number:
+            self.auth_token_phone = generate_code()
+
+        print(self.auth_token_phone)
+        print(self.auth_token_email)
+
+        super().save(*args, **kwargs)
 
 
 models.signals.pre_save.connect(set_username, sender=User)
